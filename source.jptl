@@ -1,0 +1,6 @@
+STATES [ s0 s1 s2 ]
+INPUTS [ 1 0 ]
+TAPE   [ 1 0 # ]
+
+inst s0 # -> None s1 .
+inst s0 1 -> 0    s2 r
