@@ -181,7 +181,7 @@ void fetch_states(String *source, JPTL_Context *ctx)
 		}
 
 		if (*source->data != 's') {
-			// TODO: later do error reporting by line and have a caret cursor pointing to the error
+			// TODO(jenny): later do error reporting by line and have a caret cursor pointing to the error
 			fprintf(stderr, "State names must start with an s\n");
 			exit(1);
 		}
@@ -351,20 +351,106 @@ void fetch_insts(String *source, JPTL_Context *ctx)
 
 		Token curr_state = tokenize_by_space(&line);
 
-		int64_t index = -1;
+		int64_t current_state_index = -1;
 		for (int64_t i = 0; i < ctx->states.count; i += 1) {
 			if (string_equal(ctx->states.items[i].name, curr_state)) {
-				index = i;
+				current_state_index = i;
 				break;
 			}
 		}
 
 		if (index == -1) {
-			fprintf(stderr, "Undeclared state `%.*s`\n", (int)curr_state.count, curr_state.data);
+			fprintf(stderr, "Undeclared state `%.*s`. Add it to the STATES array.\n",
+					(int)curr_state.count, curr_state.data);
 			exit(1);
 		}
 
-		String read_character = tokenize_by_space(&line); // TODO: continue from here
+/*
+TODO(jenny): later please add support for
+multiple characters being valid for an instruction
+
+like instead of writing
+
+inst s0 0 -> ...
+inst s0 1 -> ...
+inst s0 2 -> ...
+inst s0 3 -> ...
+
+write
+
+inst s0 [ 0 1 2 3 ] -> ...
+
+this would be way better
+
+"inst s0 0 1 2 3" could be good too but I would like to
+separate the state and the character more than with just spaces
+
+I could unify the single and multiple declaration with like this syntax
+
+inst s0 [ 0 ] -> ...
+
+But I would like to prioritise ease of use
+
+Also you should be able to do
+
+inst s0 ANY -> ...
+
+or
+
+inst s0 any -> ...
+*/
+
+		if (line.count <= 0) {
+			fprintf(stderr, "Unexpected line end\n");
+			exit(1);
+		}
+
+		String read_character = tokenize_by_space(&line);
+
+		if (read_character.count != 1) {
+			fprintf(stderr, "The read character `%.*s` can only be one single symbol.\n",
+					(int)read_character.count, read_character.data);
+			exit(1);
+		}
+
+		int64_t read_character_index = -1;
+		for (int64_t i = 0; i < ctx->tape_alphabet.count; i += 1) {
+			if (ctx->tape_alphabet.items[i] == read_character.data[0]) {
+				read_character_index = i;
+				break;
+			}
+		}
+
+		if (read_character_index == -1) {
+			fprintf(stderr, "Read character `%.*s` not declared in the TAPE array.\n",
+					(int)read_character.count, read_character.data);
+			exit(1);
+		}
+
+		if (!string_equal(SLIT("->"), tokenize_by_space(&line))) {
+			fprintf(stderr, "The transition function must have an arrow `->` operator to indicate the change.\n");
+			exit(1);
+		}
+
+/*
+
+Add support for writing no characters as
+
+inst s0 1 -> NONE s0 .
+
+*/
+
+		if (line.count <= 0) {
+			fprintf("Unexpected end of line\n");
+			exit(1);
+		}
+
+		String input_character = tokenize_by_space(&line);
+
+		if (input_character.count != 1) {
+			fprintf("Input can only be one character long.\n");
+			exit(1);
+		}
 	}
 }
 
